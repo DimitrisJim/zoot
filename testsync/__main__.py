@@ -17,6 +17,7 @@ import sys
 import os
 
 from testsync.copier import Copier
+from testsync.annotate import DecoCollector
 from testsync.helpers import cpython_branch, git_exists
 
 
@@ -61,9 +62,12 @@ def validate_args(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    import libcst
+
     args = argparser.parse_args()
     validate_args(args)
-    _ = Copier(args).copy()
+
+    # todo: fill out
 
     return sys.exit(0)
 
