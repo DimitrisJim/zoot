@@ -17,7 +17,7 @@ import sys
 import os
 
 from testsync.copier import Copier
-from testsync.annotate import DecoCollector
+from testsync.annotate import DecoCollector, DecoAnnotator
 from testsync.helpers import cpython_branch, git_exists
 
 
@@ -66,9 +66,15 @@ def main() -> None:
 
     args = argparser.parse_args()
     validate_args(args)
-
-    # todo: fill out
-
+    with open("/home/imijmi/Devel/RustPython/pylib/Lib/test/test_socket.py") as f:
+        nodes = libcst.parse_module(f.read())
+    collector = DecoCollector()
+    _ = nodes.visit(collector)
+    print(len(collector.func_decos))
+    annotator = DecoAnnotator.from_collector(collector)
+    with open("/home/imijmi/Devel/cpython/Lib/test/test_socket.py") as f:
+        nodes = libcst.parse_module(f.read())
+    _ = nodes.visit(annotator)
     return sys.exit(0)
 
 

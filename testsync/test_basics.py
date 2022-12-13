@@ -38,31 +38,40 @@ cases = [
 ]
 
 
-def test_func_grabs():
-    func = """def _(): pass"""
-    for (case, expected_caught) in cases:
-        case = case.format(obj=func)
-        print(case)
-        node = libcst.parse_statement(case)
-        c = DecoCollector()
-        _ = node.visit(c)
-        assert len(c.func_decos) == expected_caught
+def _wrap_in_class(case: str, cls_name: str, bases=None):
+    cls_ = f"class {cls_name}"
+    cls_ += f"({bases}):\n" if bases else ":\n"
+    for line in case.split("\n"):
+        cls_ += "\t" + line + "\n"
+    return cls_
 
-        # wrap in class and re-do, should get same results
-        class_ = ["class _:\n"]
-        for line in case.split("\n"):
-            class_.append("\t" + line + "\n")
-        class_ = "".join(class_)
+def test_func_grabs():
+    for (index, (case, expected_caught)) in enumerate(cases):
+        func = f"""def func_{index}(): pass"""
+        case = case.format(obj=func)
+        class_ = _wrap_in_class(case, f"cls_{index}", bases="some_base")
+        print(class_)
         node = libcst.parse_statement(class_)
         c = DecoCollector()
         _ = node.visit(c)
         assert len(c.func_decos) == expected_caught
+        # check that the names are correct:
+        for cls_name, func_name in c.func_decos:
+            assert cls_name == f"cls_{index}"
+            assert func_name == f"func_{index}"
 
+
+        # check that we dont get anything if no base classes:]
+        class_ = _wrap_in_class(case, f"cls_{index}")
+        node = libcst.parse_statement(class_)
+        c = DecoCollector()
+        _ = node.visit(c)
+        assert len(c.func_decos) == 0
 
 def test_cls_grabs():
     # yup, some cases don't make sense for class (those with expectedFailure)
     # but we'll just re-use the cases, no harm done.
-    cls = """class _: pass"""
+    cls = """class _(some_base): pass"""
     for (case, expected_caught) in cases:
         case = case.format(obj=cls)
         print(case)
