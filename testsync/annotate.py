@@ -15,9 +15,9 @@ _ATTR_NAMES: Set[str] = {'skip', 'expectedFailure'}
 
 class NodeMeta:
     """ Holds metadata for the decorator. """
-    def __init__(self, decos: List[Decorator], leading_comment: Optional[Comment]=None):
+    def __init__(self, decos: List[Decorator], leading_comments: List[Comment]):
         self.decos = decos
-        self.leading_comment = leading_comment
+        self.leading_comments = leading_comments
 
 
 # helpful shorthands
@@ -49,10 +49,10 @@ class DecoCollector(m.MatcherDecoratableVisitor):
         """
         if len(node.decorators) == 0:
             return False
-        comment = _get_lead_comment(node)
-        decos = [d for d in node.decorators if rustpy_deco(d, comment is not None)]
+        comments = [*_get_lead_comments(node)]
+        decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
         if decos:
-            self.func_decos[(self.class_name, node.name.value)] = NodeMeta(decos, comment)
+            self.func_decos[(self.class_name, node.name.value)] = NodeMeta(decos, comments)
 
     def visit_ClassDef(self, node: ClassDef) -> None:
         """ Collect decorators for the class. We do not collect all decorated,
@@ -61,10 +61,10 @@ class DecoCollector(m.MatcherDecoratableVisitor):
         if len(node.bases) == 0:
             return False
         self.class_name = node.name.value
-        comment = _get_lead_comment(node)
-        decos = [d for d in node.decorators if rustpy_deco(d, comment is not None)]
+        comments = [*_get_lead_comments(node)]
+        decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
         if decos:
-            self.cls_decos[node.name.value] = NodeMeta(decos, comment)
+            self.cls_decos[node.name.value] = NodeMeta(decos, comments)
 
 class DecoAnnotator(m.MatcherDecoratableTransformer):
     """ Annotates a copied file with the given decorators. """
@@ -90,9 +90,25 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
     @m.call_if_inside(m.ClassDef(bases=[m.AtLeastN(n=1)]))
     def visit_FunctionDef(self, node: FunctionDef) -> None:
         key = (self.class_name, node.name.value)
-        if key in self.func_decos:
-            print("Found function", key)
-
+        # skip if we don't have any decorators for this function.
+        if key not in self.func_decos:
+            return False
+        
+    def leave_FunctionDef(self, original_node: FunctionDef, updated_node: FunctionDef) -> libcst.CSTNode:
+        key = (self.class_name, original_node.name.value)
+        if key not in self.func_decos:
+            return updated_node
+        
+        metadata = self.func_decos[key]
+        if metadata.leading_comments:
+            # add our comments in the beginning before the functions comments.
+            comments = [*metadata.leading_comments, *updated_node.leading_lines]
+            updated_node = updated_node.with_changes(
+                leading_lines=comments
+            )
+        decos = [*metadata.decos, *updated_node.decorators]
+        return updated_node.with_changes(decorators=decos)
+    
     def visit_ClassDef(self, node: ClassDef) -> None:
         if len(node.bases) == 0:
             return False
@@ -109,7 +125,7 @@ def rustpy_deco(deco: Decorator, has_comment: bool = False) -> bool:
         return _rustpy_deco_call(decorator)
     # re-check the leading comment, it could be the case that we're sandwiched
     # between two decorators:
-    has_comment = has_comment or bool(_get_lead_comment(deco))
+    has_comment = has_comment or bool([*_get_lead_comments(deco)])
     if isinstance(decorator, libcst.Attribute) and has_comment:
         return _rustpy_deco_attr(decorator)
     
@@ -161,10 +177,10 @@ def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
     return False
 
 
-def _get_lead_comment(node: libcst.CSTNode) -> Optional[Comment]:
+def _get_lead_comments(node: libcst.CSTNode) -> Optional[Comment]:
     """ Checks if the preceeding comment in a function mentions RustPython. """
     if node.leading_lines:
         for line in node.leading_lines:
             if line.comment and "rustpython" in line.comment.value.lower():
-                return line.comment
+                yield line
     return None
