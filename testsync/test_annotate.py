@@ -5,7 +5,7 @@ import libcst
 from testsync.annotate import DecoCollector, DecoAnnotator
 
 # python case, rustpython_case, wanted_result
-cases = [
+func_cases = [
 # Check the most simple of cases:
 [
 """
@@ -246,17 +246,74 @@ class Test(base_class):
 ]
 
 
-def test_annotate():
-    for (index, (py_case, rust_case, wanted_result)) in enumerate(cases):
-        py_node = libcst.parse_module(py_case)
-        rust_node = libcst.parse_module(rust_case)
-        c = DecoCollector()
-        
-        # collect decorators/comments
-        _ = rust_node.visit(c)
-        a = DecoAnnotator.from_collector(c)
-        node_result = py_node.visit(a)
-        print("Wanted result:\n", wanted_result, "\n\n Result:\n", node_result.code, "\n")
-        # print(rust_node)
-        # yes, libcst allows this to be done easily since source in == source out
-        assert wanted_result == node_result.code
+# python case, rustpython case, wanted result
+cls_cases = [
+# Check the most simple of cases:
+[
+"""
+class Test(base_class):
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+],
+# Grab the comments
+[
+"""
+a = 20
+
+class Test(base_class):
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# TODO: RUSTPYTHON the ground is rising.
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# TODO: RUSTPYTHON the ground is rising.
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+],
+]
+
+def test_cases():
+    for cases in (func_cases, cls_cases):
+        for (index, (py_case, rust_case, wanted_result)) in enumerate(cases):
+            py_node = libcst.parse_module(py_case)
+            rust_node = libcst.parse_module(rust_case)
+            c = DecoCollector()
+            
+            # collect decorators/comments
+            _ = rust_node.visit(c)
+            a = DecoAnnotator.from_collector(c)
+            node_result = py_node.visit(a)
+            print("Wanted result:\n", wanted_result, "\n\n Result:\n", node_result.code, "\n")
+            # print(rust_node)
+            # yes, libcst allows this to be done easily since source in == source out
+            assert wanted_result == node_result.code

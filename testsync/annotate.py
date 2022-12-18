@@ -2,10 +2,10 @@
 These are then re-applied to the copied file.
 """
 import typing, sys
-from typing import TypeAlias, Mapping, List, Set, Optional, Tuple
+from typing import TypeAlias, TypeVar, Mapping, List, Set, Optional, Tuple
 from libcst import (
-    Decorator, Comment, FunctionDef, ClassDef,
-    CSTVisitor, CSTTransformer, matchers as m
+    Decorator, Comment, FunctionDef, ClassDef, EmptyLine,
+    matchers as m
 )
 import libcst
 
@@ -22,6 +22,7 @@ class NodeMeta:
 
 # helpful shorthands
 DecoMapping: TypeAlias = Mapping[Tuple[str, ...], List[NodeMeta]]
+Self = TypeVar("Self", bound="DecoAnnotator")
 
 # TODO: There's traversals we can probably still skip.
 class DecoCollector(m.MatcherDecoratableVisitor):
@@ -74,15 +75,29 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
     cls_decos: DecoMapping
     stack: Optional[str]
 
-    @classmethod
-    def from_collector(cls: "DecoAnnotator", collector: DecoCollector) -> "DecoAnnotator":
-        return cls(collector.func_decos, collector.cls_decos)
-
     def __init__(self, func_decos: DecoMapping, cls_decos: DecoMapping):
         self.func_decos = func_decos
         self.cls_decos = cls_decos
         self.class_name = None
         super().__init__()
+
+    @classmethod
+    def from_collector(cls: Self, collector: DecoCollector) -> Self:
+        return cls(collector.func_decos, collector.cls_decos)
+
+    @staticmethod
+    def _add_metadata(metadata: NodeMeta, updated_node: libcst.CSTNode) -> libcst.CSTNode:
+        """ Adds the given metadata to the given node. """
+        if metadata.leading_comments:
+            # add our comments *after* the function/class comments.
+            # this brings them closer to the decorator and also deals
+            # with some weirdness when empty lines are involved.
+            comments = [*updated_node.leading_lines, *metadata.leading_comments]
+            updated_node = updated_node.with_changes(
+                leading_lines=comments
+            )
+        decos = [*metadata.decos, *updated_node.decorators]
+        return updated_node.with_changes(decorators=decos)
 
     # visit if in a class which has at least one base class
     # we can't use the same matcher as the collector, because we want to
@@ -98,21 +113,20 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
         key = (self.class_name, original_node.name.value)
         if key not in self.func_decos:
             return updated_node
-        
-        metadata = self.func_decos[key]
-        if metadata.leading_comments:
-            # add our comments in the beginning before the functions comments.
-            comments = [*metadata.leading_comments, *updated_node.leading_lines]
-            updated_node = updated_node.with_changes(
-                leading_lines=comments
-            )
-        decos = [*metadata.decos, *updated_node.decorators]
-        return updated_node.with_changes(decorators=decos)
+        # add the decorators/leading comments
+        return self._add_metadata(self.func_decos[key], updated_node)
     
     def visit_ClassDef(self, node: ClassDef) -> None:
+        # skip if this class doesn't have any base classes.
         if len(node.bases) == 0:
             return False
         self.class_name = node.name.value
+
+    def leave_ClassDef(self, original_node: ClassDef, updated_node: ClassDef) -> libcst.CSTNode:
+        if self.class_name not in self.cls_decos:
+            return updated_node
+        return self._add_metadata(self.cls_decos[self.class_name], updated_node)
+
 
 def rustpy_deco(deco: Decorator, has_comment: bool = False) -> bool:
     """ Match against the class of deco.decorator. If its
@@ -125,7 +139,7 @@ def rustpy_deco(deco: Decorator, has_comment: bool = False) -> bool:
         return _rustpy_deco_call(decorator)
     # re-check the leading comment, it could be the case that we're sandwiched
     # between two decorators:
-    has_comment = has_comment or bool([*_get_lead_comments(deco)])
+    has_comment = has_comment or bool(_get_lead_comments(deco))
     if isinstance(decorator, libcst.Attribute) and has_comment:
         return _rustpy_deco_attr(decorator)
     
@@ -177,10 +191,10 @@ def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
     return False
 
 
-def _get_lead_comments(node: libcst.CSTNode) -> Optional[Comment]:
-    """ Checks if the preceeding comment in a function mentions RustPython. """
-    if node.leading_lines:
-        for line in node.leading_lines:
-            if line.comment and "rustpython" in line.comment.value.lower():
-                yield line
-    return None
+def _get_lead_comments(node: libcst.CSTNode) -> List[EmptyLine]:
+    """ Checks if the preceeding comment in a function/class mentions RustPython. """
+    rlines = []
+    for line in node.leading_lines:
+        if line.comment and "rustpython" in line.comment.value.lower():
+            rlines.append(line)
+    return rlines
