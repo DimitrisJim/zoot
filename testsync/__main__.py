@@ -1,14 +1,13 @@
 """ Copy tests over from cpython source to rustpython. Ideally, can automatically mark tests that are failing in rustpython. 
 
-TODO: Use git to restore a given test file if a SyntaxError is encountered.
+TODO: Use git to restore a given test file if a SyntaxError is encountered?
 TODO: spit out names on single verbosity, spit out diffs when doubled.
 TODO: Execute test files with tip of rustpython binary and add skips when necessary. Iff a syntax error is
       encountered, it should probably be skipped all together after informing user.
 
-      - On success, error code is 0. 
-      - On SyntaxError, error code is 2.
-      - On segfault, error code is 139 (not sure if this is consistent across platforms).
-      - 
+      - On success, error code is 0 -> do nada.
+      - On segfault, error code is 139 (not sure if this is consistent across platforms) -> unittest.skip
+      - On syntax error, error? -> unittest.expectedFailure?
 
 TODO: Can actually do this for lib files too, not only tests.
 """
@@ -28,7 +27,7 @@ argparser = argparse.ArgumentParser(
     prog="testsync", description="Copy libs/tests over from cpython source to rustpython."
 )
 # make these two required arguments
-# todo: allow cpython as a git repo?
+# TODO: allow cpython as a git repo?
 argparser.add_argument("--cpython", help="Absolute path to cpython source", default=cpy, type=str)
 argparser.add_argument("--rustpython", help="Absolute path to rustpython source", default=rustpy, type=str)
 
@@ -62,19 +61,10 @@ def validate_args(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    import libcst
-
     args = argparser.parse_args()
     validate_args(args)
-    with open("/home/imijmi/Devel/RustPython/pylib/Lib/test/test_socket.py") as f:
-        nodes = libcst.parse_module(f.read())
-    collector = DecoCollector()
-    _ = nodes.visit(collector)
-    print(len(collector.func_decos))
-    annotator = DecoAnnotator.from_collector(collector)
-    with open("/home/imijmi/Devel/cpython/Lib/test/test_socket.py") as f:
-        nodes = libcst.parse_module(f.read())
-    _ = nodes.visit(annotator)
+    # Get the files to copy over.
+
     return sys.exit(0)
 
 

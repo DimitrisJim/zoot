@@ -10,17 +10,20 @@ func_cases = [
 [
 """
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
 """
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass
 """,
 """
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass
@@ -30,6 +33,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -37,6 +41,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     @unittest.skip("TODO: RUSTPYTHON")
@@ -45,6 +50,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     @a_fancy_decorator
     @yet_another_fancy_decorator
@@ -56,6 +62,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -63,6 +70,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @unittest.skip("TODO: RUSTPYTHON")
     @yet_another_fancy_decorator
@@ -72,6 +80,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     @unittest.skip("TODO: RUSTPYTHON")
     @a_fancy_decorator
@@ -85,6 +94,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -92,6 +102,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     # TODO: RUSTPYTHON
     @unittest.expectedFailure
@@ -102,6 +113,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON
     @unittest.expectedFailure
     @unittest.skip("TODO: RUSTPYTHON")
@@ -116,6 +128,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -123,6 +136,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON the sky has stopped falling.
     @a_fancy_decorator
     @unittest.expectedFailure
@@ -132,6 +146,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON the sky has stopped falling.
     @unittest.expectedFailure
     @a_fancy_decorator
@@ -144,6 +159,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -152,6 +168,7 @@ class Test(base_class):
 # comment & expectedFailure are ignored. (maybe not?)
 """
 class Test(base_class):
+    
     # TODO: Do not say the word which we mustn't say
     @a_fancy_decorator
     @unittest.expectedFailure
@@ -161,6 +178,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -172,6 +190,7 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     @yet_another_fancy_decorator
     def test_foo_empty_decos(self):
@@ -179,6 +198,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     @a_fancy_decorator
     # TODO: RUSTPYTHON the sky is considering its options.
     @unittest.expectedFailure
@@ -190,6 +210,7 @@ class Test(base_class):
 # vs a comment belonging to the function.
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON the sky is considering its options.
     @unittest.expectedFailure
     @a_fancy_decorator
@@ -202,11 +223,13 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON theres a huge giant space bug here, that's why we skip.
     # Rustpython: Any comments containing rustpython are caught, right?
     # including this, rustpython.
@@ -216,6 +239,7 @@ class Test(base_class):
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON theres a huge giant space bug here, that's why we skip.
     # Rustpython: Any comments containing rustpython are caught, right?
     # including this, rustpython.
@@ -228,36 +252,107 @@ class Test(base_class):
 [
 """
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
 """
 class Test(base_class):
+    
     # TODO: RUSTPYTHON the sky is legit falling.
     def test_foo_empty_decos(self):
         pass
 """,
 """
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
+],
+# With multiple comments (one of which mentions rustpython) we grab the
+# one that mentions rustpython and add it *after* all the other comments:
+[
+"""
+class Test(base_class):
+
+    # Another comment
+    # This one could mention lizards.
+    @a_fancy_decorator
+    @yet_another_fancy_decorator
+    def test_foo(self):
+        pass
+""",
+"""
+class Test(base_class):
+
+    # TODO: RUSTPYTHON the sky is legit falling.
+    # Another comment
+    # This one could mention lizards.
+    @a_fancy_decorator
+    @unittest.expectedFailure
+    @yet_another_fancy_decorator
+    def test_foo(self):
+        pass
+""",
+"""
+class Test(base_class):
+
+    # Another comment
+    # This one could mention lizards.
+    # TODO: RUSTPYTHON the sky is legit falling.
+    @unittest.expectedFailure
+    @a_fancy_decorator
+    @yet_another_fancy_decorator
+    def test_foo(self):
+        pass
+"""
+],
+# Don't grab decos even if they mention rustpython (in case of a call):
+[
+"""
+class Test(base_class):
+
+    # A comment
+    def test_foo(self):
+        pass
+""",
+"""
+class Test(base_class):
+
+    # TODO: RUSTPYTHON the sky is legit falling.
+    # A comment
+    @a_fancy_decorator("TODO: RUSTPYTHON")
+    def test_foo(self):
+        pass
+""",
+"""
+class Test(base_class):
+
+    # A comment
+    def test_foo(self):
+        pass
+"""
 ]
 ]
 
 
 # python case, rustpython case, wanted result
+# NOTE: a = 20 is added to the beginning of the python case
+#       since without it comments are considered part of the header.
 cls_cases = [
 # Check the most simple of cases:
 [
 """
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
 """
 @unittest.skip("TODO: RUSTPYTHON")
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass
@@ -265,6 +360,7 @@ class Test(base_class):
 """
 @unittest.skip("TODO: RUSTPYTHON")
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass
@@ -276,6 +372,7 @@ class Test(base_class):
 a = 20
 
 class Test(base_class):
+    
     def test_foo_empty_decos(self):
         pass
 """,
@@ -285,6 +382,7 @@ a = 20
 # TODO: RUSTPYTHON the ground is rising.
 @unittest.skip("TODO: RUSTPYTHON")
 class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass
@@ -295,6 +393,107 @@ a = 20
 # TODO: RUSTPYTHON the ground is rising.
 @unittest.skip("TODO: RUSTPYTHON")
 class Test(base_class):
+    
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+],
+# A class w/o a base class is completely ignored.
+[
+"""
+a = 20
+
+class Test:
+    
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# TODO: RUSTPYTHON a very important comment.
+@unittest.expectedFailure
+@unittest.skip("TODO: RUSTPYTHON")
+class Test:
+    
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+class Test:
+    
+    def test_foo_empty_decos(self):
+        pass
+""",
+],
+# Grab the comments, place ours after any other comments
+[
+"""
+a = 20
+
+# This is a Test class, it's pretty cool.
+class Test(base_class):
+    
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# TODO: RUSTPYTHON the ground is rising.
+# This is a Test class, it's pretty cool.
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# This is a Test class, it's pretty cool.
+# TODO: RUSTPYTHON the ground is rising.
+@unittest.skip("TODO: RUSTPYTHON")
+class Test(base_class):
+    
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+],
+# Don't grab comments if a deco isn't present.
+[
+"""
+a = 20
+
+# This is a Test class, it's pretty cool.
+class Test(base_class):
+    
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# TODO: RUSTPYTHON the ground is rising.
+# This is a Test class, it's pretty cool.
+class Test(base_class):
+    
+    @unittest.skip("TODO: RUSTPYTHON")
+    def test_foo_empty_decos(self):
+        pass
+""",
+"""
+a = 20
+
+# This is a Test class, it's pretty cool.
+class Test(base_class):
+    
     @unittest.skip("TODO: RUSTPYTHON")
     def test_foo_empty_decos(self):
         pass

@@ -25,6 +25,16 @@ def git_exists() -> bool:
         return False
     return True
 
+def git_restore(rustpy_repo: str, file: str) -> bool:
+    """ Roll back any changes made if a failure was detected. """
+    with chdir(rustpy_repo):
+        try:
+            subprocess.check_output(["git", "restore", file])
+        except subprocess.CalledProcessError:
+            return False
+    return True
+
+
 def cpython_branch(path: str) -> str:
     """ Grab the branch of cpython. """
     with chdir(path):

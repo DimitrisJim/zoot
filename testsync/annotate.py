@@ -1,4 +1,4 @@
-""" Holds annotations for the given file (namely, skips, expectedfailures, etc. 
+""" Holds annotations for the given file (namely, skips, expectedfailures, etc) 
 These are then re-applied to the copied file.
 """
 import typing, sys
@@ -127,6 +127,8 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
             return updated_node
         return self._add_metadata(self.cls_decos[self.class_name], updated_node)
 
+
+# Helpers
 
 def rustpy_deco(deco: Decorator, has_comment: bool = False) -> bool:
     """ Match against the class of deco.decorator. If its
