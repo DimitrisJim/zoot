@@ -15,7 +15,6 @@ import argparse
 import sys
 import os
 
-from testsync.copier import Copier
 from testsync.annotate import DecoCollector, DecoAnnotator
 from testsync.helpers import cpython_branch, git_exists
 
