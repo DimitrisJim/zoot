@@ -1,71 +1,32 @@
-import argparse, os, subprocess, sys
+import argparse, os, subprocess
 from contextlib import AbstractContextManager
+from pathlib import Path
 
-from testsync.helpers import git_diff
-
-CPY_LIB = 'Lib/'
-RUSTPY_LIB = 'pylib/Lib/'
+CPY_LIB = Path("Lib")
+RUSTPY_LIB = Path("pylib") / 'Lib'
 
 
-# TODO: Refactor this.
-class GetABetterName:
-    """ Copy over tests from CPython to RustPython. """
+class FileTest:
+
     def __init__(self, args: argparse.Namespace) -> None:
-        is_lib = hasattr(args, 'libname')
-
-        self.cpython_path = os.path.join(args.cpython, (CPY_LIB if is_lib else os.path.join(CPY_LIB, 'test/')))
-        self.rustpython_path = os.path.join(args.rustpython, (RUSTPY_LIB if is_lib else os.path.join(RUSTPY_LIB, 'test/')))
-        self.fname = args.libname if is_lib else args.testname
-        self.copy_all = getattr(args, 'all_tests', False) or getattr(args, 'all_libs', False)
+        self.cpython_path = Path(args.cpython) / CPY_LIB / 'test/'
+        self.rustpython_path = Path(args.rustpython) / RUSTPY_LIB / 'test/'
+        self.fname = args.testname
         self.verbosity = args.verbose
-        # can only be true if copying a lib.
-        self.copy_test = args.copy_tests if is_lib else False
 
-    def _copy(self, source: str, dest: str, file: str) -> None:
-        """ Copy a single file from CPython to RustPython if there's a diff. """
-        cpy = os.path.join(source, file)
-        rustpy = os.path.join(dest, file)
-        if os.path.exists(cpy) and not os.path.exists(rustpy):
-            # TODO: Move anyway? (for now, report that the file does not exist, don't copy over)
-            print("File '{}' does not exist in RustPython.".format(rustpy))
-            return
-        if self.verbosity > 0:
-            print("Copying '{}' to '{}'.".format(cpy, rustpy))
-        diff = git_diff(rustpy, cpy)
-        if not diff:
-            print("File '{}' is up to date!".format(file), file=sys.stderr)
-            return
-        if self.verbosity > 0:
-            print("Copying over file '{}'".format(file))
-            if self.verbosity > 1:
-                print(diff)
-        
-        # TODO: do the copy, check that file exists.
-        return
+    def _read(self, path: Path) -> str:
+        with open(path / self.fname, 'r') as f:
+            return f.read()
 
-    def copy(self) -> None:
-        """ Copy over a single file or all files. """
-        # note: when running a single file, we do not know if it *actually* exists.
-        files = []
-        if self.copy_all:
-            # note: filter by files, for now.
-            files = get_files(self.cpython_path)
-            if self.copy_test:
-                # note: filter by files, for now.
-                files += get_files(os.path.join(self.cpython_path, 'test/'))
-        else:
-            files.append(self.fname)
-            if self.copy_test:
-                files.append("test_{}.py".format(self.fname.rsplit('.')[0]))
+    def read_pyfile(self) -> str:
+        return self._read(self.cpython_path)
 
-        for file in files:
-            self._copy(self.cpython_path, self.rustpython_path, file)
+    def read_rustpyfile(self) -> str:
+        return self._read(self.rustpython_path)
 
-
-
-def get_files(path) -> list:
-    """ Traverse the path and return only files, excluding directories for now. """
-    return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+    def write_rustpyfile(self, content: str) -> None:
+        with open(self.rustpython_path / self.fname, 'w') as f:
+            f.write(content)
 
 
 # copied over from source, so as to not require 3.11 to run the script.

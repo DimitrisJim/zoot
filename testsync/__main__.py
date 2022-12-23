@@ -23,28 +23,14 @@ cpy = '/home/imijmi/Devel/cpython'
 rustpy = '/home/imijmi/Devel/RustPython'
 
 argparser = argparse.ArgumentParser(
-    prog="testsync", description="Copy libs/tests over from cpython source to rustpython."
+    prog="testsync", description="Copy and annotate test from cpython source to rustpython."
 )
-# make these two required arguments
-# TODO: allow cpython as a git repo?
 argparser.add_argument("--cpython", help="Absolute path to cpython source", default=cpy, type=str)
 argparser.add_argument("--rustpython", help="Absolute path to rustpython source", default=rustpy, type=str)
 
 argparser.add_argument("-v", "--verbose", action="count", default=0, help="Increase verbosity")
 argparser.add_argument("--branch", help="Branch of CPython to target", default='3.11', type=str)
-argparser.add_argument("--annotate", help="Annotate with @skip the tests that are failing in rustpython", default=True, action="store_true")
-
-files = argparser.add_subparsers(help="Files to copy over")
-libs = files.add_parser("lib", help="Copy over lib files")
-libs.add_argument("libname", metavar="name", help="Lib file to copy over", type=str, nargs="?")
-libs.add_argument("--n", dest='libname', help="Lib file to copy over", type=str, required=False)
-libs.add_argument("--copy-tests", help="Try and copy the test file for this library", action="store_true", default=False)
-libs.add_argument("--all", dest="all_libs", help="Copy over all lib files", action="store_true", default=False)
-tests = files.add_parser("test", help="Copy over test files")
-tests.add_argument("testname", metavar="name", help="Test file to copy over", type=str, nargs="?")
-tests.add_argument("-n", dest='testname', help="Test file to copy over", type=str, required=False)
-tests.add_argument("--all", dest="all_tests", help="Copy over all test files", action="store_true", default=False)
-
+argparser.add_argument("--testname", help="Name of test file", type=str)
 
 def validate_args(args: argparse.Namespace) -> None:
     """ Check that paths exist, version is correct. """

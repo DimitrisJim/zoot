@@ -1,5 +1,4 @@
 # Some *very* coarse tests.
-import pytest
 import libcst
 
 from testsync.annotate import DecoCollector, DecoAnnotator
