@@ -6,8 +6,8 @@ CPY_LIB = Path("Lib")
 RUSTPY_LIB = Path("pylib") / 'Lib'
 
 
-class FileTest:
-
+class TFile:
+    """ A file to be synced. Holds most relevant information. """
     def __init__(self, args: argparse.Namespace) -> None:
         self.cpython_path = Path(args.cpython) / CPY_LIB / 'test/'
         self.rustpython_path = Path(args.rustpython) / RUSTPY_LIB / 'test/'
@@ -28,6 +28,13 @@ class FileTest:
         with open(self.rustpython_path / self.fname, 'w') as f:
             f.write(content)
 
+    # could probably make these properties
+    def pypath(self) -> Path:
+        return self.cpython_path
+
+    def rustpypath(self) -> Path:
+        return self.rustpython_path
+
 
 # copied over from source, so as to not require 3.11 to run the script.
 class chdir(AbstractContextManager):
@@ -45,6 +52,30 @@ class chdir(AbstractContextManager):
         os.chdir(self._old_cwd.pop())
 
 
+
+# A couple of very basic helpers for calling git, 
+# don't wanna use another dep.
+
+def git_add(file: TFile):
+    """ Add a file to git. """
+    _run_in_dir(f"git add {file}", file.rustpypath())
+
+
+def git_commit(file: TFile, msg):
+    """ Commit a file to git. """
+    try:
+        _run_in_dir(f"git commit -m {msg}", file.rustpypath())
+    except subprocess.CalledProcessError:
+        # restore the file if the commit fails
+        git_restore(file, staged=True)
+
+
+def git_add_commit(file: TFile, msg: str):
+    """ Add and commit a file to git. """
+    git_add(file)
+    git_commit(file, msg)
+
+
 def git_exists() -> bool:
     """ Check if git is installed."""
     try:
@@ -53,13 +84,13 @@ def git_exists() -> bool:
         return False
     return True
 
-def git_restore(rustpy_repo: str, file: str) -> bool:
+def git_restore(file: TFile, staged: bool = False) -> bool:
     """ Roll back any changes made if a failure was detected. """
-    with chdir(rustpy_repo):
-        try:
-            subprocess.check_output(["git", "restore", file])
-        except subprocess.CalledProcessError:
-            return False
+    try:
+        cmd = ["git", "restore", "--staged", file.fname] if staged else ["git", "restore", file.fname]
+        _run_in_dir(cmd, file.rustpypath)
+    except subprocess.CalledProcessError:
+        return False
     return True
 
 def git_diff(cpy_file: str, rustpy_file: str) -> str:
@@ -71,3 +102,8 @@ def cpython_branch(path: str) -> str:
     """ Grab the branch of cpython. """
     with chdir(path):
         return subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("utf-8").strip()
+
+def _run_in_dir(cmd: str, path: str) -> str:
+    """ Run a command in a directory. """
+    with chdir(path):
+        return subprocess.check_output(cmd.split()).decode("utf-8").strip()

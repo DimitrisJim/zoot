@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from testsync.helpers import FileTest
+from testsync.helpers import TFile
 
 
 common = {
@@ -13,7 +13,7 @@ common = {
 def test_files_found():
     for filename in ['test_fstring.py', 'test_ast.py', 'test_asyncgen.py']:
         args = argparse.Namespace(**common, testname=filename)
-        testfile = FileTest(args)
+        testfile = TFile(args)
 
         assert testfile.cpython_path == common['cpython'] / 'Lib'/ 'test/'
         assert testfile.rustpython_path == common['rustpython'] / 'pylib' / 'Lib' / 'test'

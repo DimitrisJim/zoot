@@ -1,7 +1,6 @@
 """ Holds annotations for the given file (namely, skips, expectedfailures, etc) 
 These are then re-applied to the copied file.
 """
-import typing, sys
 from typing import TypeAlias, TypeVar, Mapping, List, Set, Optional, Tuple
 from libcst import (
     Decorator, Comment, FunctionDef, ClassDef, EmptyLine,
