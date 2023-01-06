@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from testsync.helpers import TFile
+from zoot.helpers import TFile
 
 
 common = {

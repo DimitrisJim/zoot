@@ -1,7 +1,7 @@
 # Some *very* coarse tests.
 import libcst
 
-from testsync.annotate import DecoCollector, DecoAnnotator
+from zoot.annotate import DecoCollector, DecoAnnotator
 
 # python case, rustpython_case, wanted_result
 func_cases = [
@@ -511,7 +511,10 @@ def test_cases():
             _ = rust_node.visit(c)
             a = DecoAnnotator.from_collector(c)
             node_result = py_node.visit(a)
-            print("Wanted result:\n", wanted_result, "\n\n Result:\n", node_result.code, "\n")
+            print(
+                "Wanted result:\n", wanted_result, 
+                "\n\n Result:\n", node_result.code, "\n"
+            )
             # print(rust_node)
             # yes, libcst allows this to be done easily since source in == source out
             assert wanted_result == node_result.code

@@ -2,7 +2,7 @@
 import pytest
 import libcst
 
-from testsync.annotate import DecoCollector
+from zoot.annotate import DecoCollector
 
 # re-use for functions and classes
 cases = [
