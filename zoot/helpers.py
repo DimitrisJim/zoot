@@ -1,21 +1,24 @@
-import argparse, os, subprocess
+import argparse
+import os
+import subprocess
 from contextlib import AbstractContextManager
 from pathlib import Path
 
 CPY_LIB = Path("Lib")
-RUSTPY_LIB = Path("pylib") / 'Lib'
+RUSTPY_LIB = Path("pylib") / "Lib"
 
 
 class TFile:
-    """ A file to be synced. Holds most relevant information. """
+    """A file to be synced. Holds most relevant information."""
+
     def __init__(self, args: argparse.Namespace) -> None:
-        self.cpython_path = Path(args.cpython) / CPY_LIB / 'test/'
-        self.rustpython_path = Path(args.rustpython) / RUSTPY_LIB / 'test/'
+        self.cpython_path = Path(args.cpython) / CPY_LIB / "test/"
+        self.rustpython_path = Path(args.rustpython) / RUSTPY_LIB / "test/"
         self.fname = args.testname
         self.verbosity = args.verbose
 
     def _read(self, path: Path) -> str:
-        with open(path / self.fname, 'r') as f:
+        with open(path / self.fname, "r") as f:
             return f.read()
 
     def read_pyfile(self) -> str:
@@ -25,7 +28,7 @@ class TFile:
         return self._read(self.rustpython_path)
 
     def write_rustpyfile(self, content: str) -> None:
-        with open(self.rustpython_path / self.fname, 'w') as f:
+        with open(self.rustpython_path / self.fname, "w") as f:
             f.write(content)
 
     # could probably make these properties
@@ -52,17 +55,17 @@ class chdir(AbstractContextManager):
         os.chdir(self._old_cwd.pop())
 
 
-
-# A couple of very basic helpers for calling git, 
+# A couple of very basic helpers for calling git,
 # don't wanna use another dep.
 
+
 def git_add(file: TFile):
-    """ Add a file to git. """
+    """Add a file to git."""
     _run_in_dir(f"git add {file}", file.rustpypath())
 
 
 def git_commit(file: TFile, msg):
-    """ Commit a file to git. """
+    """Commit a file to git."""
     try:
         _run_in_dir(f"git commit -m {msg}", file.rustpypath())
     except subprocess.CalledProcessError:
@@ -71,39 +74,53 @@ def git_commit(file: TFile, msg):
 
 
 def git_add_commit(file: TFile, msg: str):
-    """ Add and commit a file to git. """
+    """Add and commit a file to git."""
     git_add(file)
     git_commit(file, msg)
 
 
 def git_exists() -> bool:
-    """ Check if git is installed."""
+    """Check if git is installed."""
     try:
         subprocess.check_output(["git", "--version"])
     except subprocess.CalledProcessError:
         return False
     return True
 
+
 def git_restore(file: TFile, staged: bool = False) -> bool:
-    """ Roll back any changes made if a failure was detected. """
+    """Roll back any changes made if a failure was detected."""
     try:
-        cmd = ["git", "restore", "--staged", file.fname] if staged else ["git", "restore", file.fname]
+        cmd = (
+            ["git", "restore", "--staged", file.fname]
+            if staged
+            else ["git", "restore", file.fname]
+        )
         _run_in_dir(cmd, file.rustpypath)
     except subprocess.CalledProcessError:
         return False
     return True
 
+
 def git_diff(cpy_file: str, rustpy_file: str) -> str:
-    """ Grab the diff."""
-    res = subprocess.run(["git", "diff", "--no-index", cpy_file, rustpy_file], capture_output=True)
-    return res.stdout.decode('utf-8')
+    """Grab the diff."""
+    res = subprocess.run(
+        ["git", "diff", "--no-index", cpy_file, rustpy_file], capture_output=True
+    )
+    return res.stdout.decode("utf-8")
+
 
 def cpython_branch(path: str) -> str:
-    """ Grab the branch of cpython. """
+    """Grab the branch of cpython."""
     with chdir(path):
-        return subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("utf-8").strip()
+        return (
+            subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+            .decode("utf-8")
+            .strip()
+        )
+
 
 def _run_in_dir(cmd: str, path: str) -> str:
-    """ Run a command in a directory. """
+    """Run a command in a directory."""
     with chdir(path):
         return subprocess.check_output(cmd.split()).decode("utf-8").strip()

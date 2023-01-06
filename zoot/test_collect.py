@@ -1,5 +1,4 @@
 # Some *very* coarse tests.
-import pytest
 import libcst
 
 from zoot.annotate import DecoCollector
@@ -45,6 +44,7 @@ def _wrap_in_class(case: str, cls_name: str, bases=None):
         cls_ += "\t" + line + "\n"
     return cls_
 
+
 def test_func_grabs():
     for (index, (case, expected_caught)) in enumerate(cases):
         func = f"""def func_{index}(): pass"""
@@ -60,13 +60,13 @@ def test_func_grabs():
             assert cls_name == f"cls_{index}"
             assert func_name == f"func_{index}"
 
-
         # check that we dont get anything if no base classes:]
         class_ = _wrap_in_class(case, f"cls_{index}")
         node = libcst.parse_statement(class_)
         c = DecoCollector()
         _ = node.visit(c)
         assert len(c.func_decos) == 0
+
 
 def test_cls_grabs():
     # yup, some cases don't make sense for class (those with expectedFailure)

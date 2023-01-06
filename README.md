@@ -51,4 +51,4 @@ Requires `libCST` and Python 3.8+, `pytest` for testing.
     should warn about this.
  6. Allow running things for more than one file at a time.
  7. Have it watch for file changes in the CPython repo and automatically automatically open a PR for the changes on
-    my local fork of RustPython. After reviewing the changes I can push it back upstream.
+    my local fork of RustPython. After reviewing the changes I can push it back upstream. Use submodules for this?
