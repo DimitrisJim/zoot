@@ -10,21 +10,27 @@ permissions:
   contents: read
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest, windows
-
+  tests:
+    # Display name of the job
+    name: Run checks
+    # The OS to run the job steps on. We are using a matrix definition that defines the node versions and the OS to use, so
+    # here we just specify use the OS defined in the matrix.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.10']
     steps:
     - uses: actions/checkout@v3
-      # TODO: Add more?
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
-    - name: Install libcst, ruff.
+        python-version: ${{ matrix.python-version }}
+    - name: Install libcst, ruff, pytest
       run: |
         python -m pip install --upgrade pip
-        pip install libcst ruff
+        pip install libcst ruff pytest
     - name: Lint with Ruff
       run: |
         python -m ruff .
