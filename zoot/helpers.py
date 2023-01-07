@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+from typing import List
 from contextlib import AbstractContextManager
 from pathlib import Path
 
@@ -10,6 +11,11 @@ RUSTPY_LIB = Path("pylib") / "Lib"
 
 class TFile:
     """A file to be synced. Holds most relevant information."""
+
+    cpython_path: Path
+    rustpython_path: Path
+    fname: str
+    verbosity: int
 
     def __init__(self, args: argparse.Namespace) -> None:
         self.cpython_path = Path(args.cpython) / CPY_LIB / "test/"
@@ -61,13 +67,13 @@ class chdir(AbstractContextManager):
 
 def git_add(file: TFile):
     """Add a file to git."""
-    _run_in_dir(f"git add {file}", file.rustpypath())
+    _run_in_dir(["git", "add", file.fname], file.rustpypath())
 
 
-def git_commit(file: TFile, msg):
+def git_commit(file: TFile, msg: str):
     """Commit a file to git."""
     try:
-        _run_in_dir(f"git commit -m {msg}", file.rustpypath())
+        _run_in_dir(["git",  "commit", "-m", msg], file.rustpypath())
     except subprocess.CalledProcessError:
         # restore the file if the commit fails
         git_restore(file, staged=True)
@@ -96,13 +102,13 @@ def git_restore(file: TFile, staged: bool = False) -> bool:
             if staged
             else ["git", "restore", file.fname]
         )
-        _run_in_dir(cmd, file.rustpypath)
+        _run_in_dir(cmd, file.rustpypath())
     except subprocess.CalledProcessError:
         return False
     return True
 
 
-def git_diff(cpy_file: str, rustpy_file: str) -> str:
+def git_diff(cpy_file: Path, rustpy_file: Path) -> str:
     """Grab the diff."""
     res = subprocess.run(
         ["git", "diff", "--no-index", cpy_file, rustpy_file], capture_output=True
@@ -110,7 +116,7 @@ def git_diff(cpy_file: str, rustpy_file: str) -> str:
     return res.stdout.decode("utf-8")
 
 
-def cpython_branch(path: str) -> str:
+def cpython_branch(path: Path) -> str:
     """Grab the branch of cpython."""
     with chdir(path):
         return (
@@ -120,7 +126,7 @@ def cpython_branch(path: str) -> str:
         )
 
 
-def _run_in_dir(cmd: str, path: str) -> str:
+def _run_in_dir(cmd: List[str], path: Path) -> str:
     """Run a command in a directory."""
     with chdir(path):
-        return subprocess.check_output(cmd.split()).decode("utf-8").strip()
+        return subprocess.check_output(cmd).decode("utf-8").strip()

@@ -2,8 +2,8 @@
 These are then re-applied to the copied file.
 """
 import sys
-from typing import TypeVar, Mapping, List, Set, Optional, Tuple
-from libcst import Decorator, Comment, FunctionDef, ClassDef, EmptyLine, matchers as m
+from typing import TypeVar, List, Set, Tuple, MutableMapping, Type, Union
+from libcst import Decorator, FunctionDef, ClassDef, EmptyLine, matchers as m
 import libcst
 
 # currently, we only care about skip and expectedFailure of unittest.
@@ -13,30 +13,37 @@ _ATTR_NAMES: Set[str] = {"skip", "expectedFailure"}
 class NodeMeta:
     """Holds metadata for the decorator."""
 
-    def __init__(self, decos: List[Decorator], leading_comments: List[Comment]):
+    decos: List[Decorator]
+    leading_comments: List[EmptyLine]
+
+    def __init__(self, decos: List[Decorator], leading_comments: List[EmptyLine]):
         self.decos = decos
         self.leading_comments = leading_comments
 
 
 # helpful shorthands
 if sys.version_info.minor >= 10:
-    from typing import TypeAlias
-    DecoMapping: TypeAlias = Mapping[Tuple[str, ...], List[NodeMeta]]
+    from typing import TypeAlias  # type: ignore
+
+    FuncDecos: TypeAlias = MutableMapping[Tuple[str, str], NodeMeta]
+    ClassDecos: TypeAlias = MutableMapping[str, NodeMeta]
 else:
-    DecoMapping = Mapping[Tuple[str, ...], List[NodeMeta]]     # type: ignore :(
-Self = TypeVar("Self", bound="DecoAnnotator")
+    FuncDecos = MutableMapping[Tuple[str, str], NodeMeta]  # type: ignore
+    ClassDecos = MutableMapping[str, NodeMeta]  # type: ignore
+# Seems to do the trick with classmethod
+DA = TypeVar("DA", bound="DecoAnnotator")
 
 # TODO: There's traversals we can probably still skip.
 class DecoCollector(m.MatcherDecoratableVisitor):
     """Collects all decorators related to RustPython from a given file."""
 
     # Mapping from function/class names to decorators (@skip or @expectedFailure)
-    func_decos: DecoMapping
-    cls_decos: DecoMapping
-    stack: Optional[str]
+    func_decos: FuncDecos
+    cls_decos: ClassDecos
+    class_name: str
 
     def __init__(self):
-        self.class_name = None
+        self.class_name = ""
         self.func_decos = {}
         self.cls_decos = {}
         super().__init__()
@@ -51,7 +58,7 @@ class DecoCollector(m.MatcherDecoratableVisitor):
         expectedFailure).
         """
         if len(node.decorators) == 0:
-            return False
+            return
         comments = [*_get_lead_comments(node)]
         decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
         if decos:
@@ -64,7 +71,7 @@ class DecoCollector(m.MatcherDecoratableVisitor):
         only those that use `unittest.skip` with a message mentioning RustPython.
         """
         if len(node.bases) == 0:
-            return False
+            return
         self.class_name = node.name.value
         comments = [*_get_lead_comments(node)]
         decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
@@ -76,23 +83,23 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
     """Annotates a copied file with the given decorators."""
 
     # Mapping from function/class names to decorators (@skip or @expectedFailure)
-    func_decos: DecoMapping
-    cls_decos: DecoMapping
-    stack: Optional[str]
+    func_decos: FuncDecos
+    cls_decos: ClassDecos
+    class_name: str
 
-    def __init__(self, func_decos: DecoMapping, cls_decos: DecoMapping):
+    def __init__(self, func_decos: FuncDecos, cls_decos: ClassDecos):
         self.func_decos = func_decos
         self.cls_decos = cls_decos
-        self.class_name = None
+        self.class_name = ""
         super().__init__()
 
     @classmethod
-    def from_collector(cls: Self, collector: DecoCollector) -> Self:
+    def from_collector(cls: Type[DA], collector: DecoCollector) -> DA:
         return cls(collector.func_decos, collector.cls_decos)
 
     @staticmethod
     def _add_metadata(
-        metadata: NodeMeta, updated_node: libcst.CSTNode
+        metadata: NodeMeta, updated_node: Union[FunctionDef, ClassDef]
     ) -> libcst.CSTNode:
         """Adds the given metadata to the given node."""
         if metadata.leading_comments:
@@ -112,11 +119,9 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
         key = (self.class_name, node.name.value)
         # skip if we don't have any decorators for this function.
         if key not in self.func_decos:
-            return False
+            return
 
-    def leave_FunctionDef(
-        self, original_node: FunctionDef, updated_node: FunctionDef
-    ) -> libcst.CSTNode:
+    def leave_FunctionDef(self, original_node: FunctionDef, updated_node: FunctionDef):
         key = (self.class_name, original_node.name.value)
         if key not in self.func_decos:
             return updated_node
@@ -126,12 +131,10 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
     def visit_ClassDef(self, node: ClassDef) -> None:
         # skip if this class doesn't have any base classes.
         if len(node.bases) == 0:
-            return False
+            return
         self.class_name = node.name.value
 
-    def leave_ClassDef(
-        self, original_node: ClassDef, updated_node: ClassDef
-    ) -> libcst.CSTNode:
+    def leave_ClassDef(self, _: ClassDef, updated_node: ClassDef):
         if self.class_name not in self.cls_decos:
             return updated_node
         return self._add_metadata(self.cls_decos[self.class_name], updated_node)
@@ -169,7 +172,9 @@ def _rustpy_deco_attr(deco_name: libcst.Attribute) -> bool:
     We've already checked the comment if we reach this point, so we just
     check the attribute name.
     """
-    if deco_name.value.value == "unittest":
+    # the typed version of Value is indeed BaseExpression, that can contain a Name
+    # which has a value attribute. Unsure how to go about it so a TODO for now.
+    if deco_name.value.value == "unittest": # type: ignore
         if deco_name.attr.value in _ATTR_NAMES:
             return True
     return False
@@ -198,12 +203,16 @@ def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
     # Have an Attribute, check if it complies:
     if _rustpy_deco_attr(func):
         for arg in deco_call.args:
-            if "rustpython" in arg.value.value.lower():
+            # Similar issue as previous case with `type` comment. Unsure 
+            # how to rectify so a TODO for now.
+            if "rustpython" in arg.value.value.lower(): # type: ignore
                 return True
     return False
 
 
-def _get_lead_comments(node: libcst.CSTNode) -> List[EmptyLine]:
+def _get_lead_comments(
+    node: Union[FunctionDef, ClassDef, Decorator]
+) -> List[EmptyLine]:
     """Checks if the preceeding comment in a function/class mentions RustPython."""
     rlines = []
     for line in node.leading_lines:
