@@ -62,8 +62,7 @@ def run() -> None:
     validate_args(args)
     # Get the files to copy over.
     _ = DecoCollector()
-    _ = DecoAnnotator(None, None)
-    return sys.exit(0)
+    _ = DecoAnnotator
 
 
 if __name__ == "__main__":
