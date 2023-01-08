@@ -39,16 +39,11 @@ Requires `libCST` and Python 3.8+, `pytest` for testing.
 
 ### A couple of TODOs:
 
- 1. Use configparser for a couple of the global vars? -- probably.
- 2. Automatically copy libs? Could work for simple single file libraries, ones in a directory might
+ 1. Automatically copy libs? Could work for simple single file libraries, ones in a directory might
     be trickier. (can be disallowed)
- 3. Execute test files with tip of rustpython binary and add skips when necessary? -- This requires
+ 2. Execute test files with tip of rustpython binary and add skips when necessary? -- This requires
     disambiguation of different error codes returned and a way to grab test-names. Can do this with
     the test lib.  
- 4. Spit out names on single verbosity, spit out diffs when doubled -- the diffing is helpful in order
-    to not move files unecessarily.
- 5. Also look for `# TODO: RustPython` comments in places other than function/class definitions. It
-    should warn about this.
- 6. Allow running things for more than one file at a time.
- 7. Have it watch for file changes in the CPython repo and automatically automatically open a PR for the changes on
+ 3. Allow running things for more than one file at a time.
+ 4. Have it watch for file changes in the CPython repo and automatically automatically open a PR for the changes on
     my local fork of RustPython. After reviewing the changes I can push it back upstream. Use submodules for this?
