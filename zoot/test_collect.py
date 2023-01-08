@@ -1,6 +1,8 @@
 # Some *very* coarse tests.
-import libcst
+from io import StringIO
+from contextlib import redirect_stderr
 
+import libcst
 from zoot.annotate import DecoCollector
 
 # re-use for functions and classes
@@ -79,3 +81,44 @@ def test_cls_grabs():
         c = DecoCollector()
         _ = node.visit(c)
         assert len(c.cls_decos) == expected_caught
+
+
+# Check that comments found in the body of a function are reported:
+comment_cases = [
+# Should just report the presence of it, notifying folks that
+# there's some additional stuff to do.
+["""
+class C(T):
+    def f(self):
+        a = 1
+        some_stuff()
+        # TODO: RUSTPYTHON
+        # A GIANT HACK
+        SOME_HACK_WOW()
+""",
+"Found a comment referencing 'rustpython' in function 'f' of class 'C'."
+],
+[
+"""
+class C(T):
+
+    # Shouldn't report anything.
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
+    def f(self):
+        a = 1
+        some_stuff()
+""",
+""
+]
+]
+
+def test_func_comments():
+    for stmt, expected in comment_cases:
+        node = libcst.parse_statement(stmt)
+        c = DecoCollector()
+        s = StringIO()
+        with redirect_stderr(s):
+            _ = node.visit(c)
+        assert s.getvalue().strip() == expected
+        

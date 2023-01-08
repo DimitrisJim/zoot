@@ -1,49 +1,8 @@
-import argparse
 import os
 import subprocess
-from typing import List
+from typing import List, Union
 from contextlib import AbstractContextManager
 from pathlib import Path
-
-CPY_LIB = Path("Lib")
-RUSTPY_LIB = Path("pylib") / "Lib"
-
-
-class TFile:
-    """A file to be synced. Holds most relevant information."""
-
-    cpython_path: Path
-    rustpython_path: Path
-    fname: str
-    verbosity: int
-
-    def __init__(self, args: argparse.Namespace) -> None:
-        self.cpython_path = Path(args.cpython) / CPY_LIB / "test/"
-        self.rustpython_path = Path(args.rustpython) / RUSTPY_LIB / "test/"
-        self.fname = args.testname
-        self.verbosity = args.verbose
-
-    def _read(self, path: Path) -> str:
-        with open(path / self.fname, "r") as f:
-            return f.read()
-
-    def read_pyfile(self) -> str:
-        return self._read(self.cpython_path)
-
-    def read_rustpyfile(self) -> str:
-        return self._read(self.rustpython_path)
-
-    def write_rustpyfile(self, content: str) -> None:
-        with open(self.rustpython_path / self.fname, "w") as f:
-            f.write(content)
-
-    # could probably make these properties
-    def pypath(self) -> Path:
-        return self.cpython_path
-
-    def rustpypath(self) -> Path:
-        return self.rustpython_path
-
 
 # copied over from source, so as to not require 3.11 to run the script.
 class chdir(AbstractContextManager):
@@ -65,24 +24,24 @@ class chdir(AbstractContextManager):
 # don't wanna use another dep.
 
 
-def git_add(file: TFile):
+def git_add(filename: Union[Path, str], path: Union[Path, str]):
     """Add a file to git."""
-    _run_in_dir(["git", "add", file.fname], file.rustpypath())
+    _run_in_dir(["git", "add", filename], path)
 
 
-def git_commit(file: TFile, msg: str):
+def git_commit(filename: Union[Path, str], path: Union[Path, str], msg: str):
     """Commit a file to git."""
     try:
-        _run_in_dir(["git",  "commit", "-m", msg], file.rustpypath())
+        _run_in_dir(["git", "commit", "-m", msg], path)
     except subprocess.CalledProcessError:
         # restore the file if the commit fails
-        git_restore(file, staged=True)
+        git_restore(filename, path, staged=True)
 
 
-def git_add_commit(file: TFile, msg: str):
+def git_add_commit(filename: Union[Path, str], path: Union[Path, str], msg: str):
     """Add and commit a file to git."""
-    git_add(file)
-    git_commit(file, msg)
+    git_add(filename, path)
+    git_commit(filename, path, msg)
 
 
 def git_exists() -> bool:
@@ -94,15 +53,17 @@ def git_exists() -> bool:
     return True
 
 
-def git_restore(file: TFile, staged: bool = False) -> bool:
+def git_restore(
+    filename: Union[Path, str], path: Union[Path, str], staged: bool = False
+) -> bool:
     """Roll back any changes made if a failure was detected."""
     try:
         cmd = (
-            ["git", "restore", "--staged", file.fname]
+            ["git", "restore", "--staged", filename]
             if staged
-            else ["git", "restore", file.fname]
+            else ["git", "restore", filename]
         )
-        _run_in_dir(cmd, file.rustpypath())
+        _run_in_dir(cmd, path)
     except subprocess.CalledProcessError:
         return False
     return True
@@ -126,7 +87,7 @@ def cpython_branch(path: Path) -> str:
         )
 
 
-def _run_in_dir(cmd: List[str], path: Path) -> str:
+def _run_in_dir(cmd: List[Union[str, Path]], path: Union[str, Path]) -> str:
     """Run a command in a directory."""
     with chdir(path):
         return subprocess.check_output(cmd).decode("utf-8").strip()

@@ -3,9 +3,8 @@ import argparse
 import sys
 import os
 from pathlib import Path
-
-from zoot.annotate import DecoCollector, DecoAnnotator
 from zoot.helpers import cpython_branch, git_exists
+from zoot.drive import Driver
 
 CPYTHON = Path.home() / "Devel/cpython"
 RUSTPYTHON = Path.home() / "Devel/RustPython"
@@ -29,7 +28,8 @@ argparser.add_argument(
 argparser.add_argument(
     "--branch", help="Branch of CPython to target", default="3.11", type=str
 )
-argparser.add_argument("--testname", help="Name of test file", type=str)
+# TODO: Add a special handling for an 'all' argument?
+argparser.add_argument("--testnames", help="Names of test file", type=str, nargs="+")
 
 
 def validate_args(args: argparse.Namespace) -> None:
@@ -61,8 +61,7 @@ def run() -> None:
     args = argparser.parse_args()
     validate_args(args)
     # Get the files to copy over.
-    _ = DecoCollector()
-    _ = DecoAnnotator
+    _ = Driver(args)
 
 
 if __name__ == "__main__":
