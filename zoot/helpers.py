@@ -76,6 +76,10 @@ def git_diff(cpy_file: Path, rustpy_file: Path) -> str:
     )
     return res.stdout.decode("utf-8")
 
+def git_checkout(path: Union[str, Path], branch: str):
+    """Checkout a branch."""
+    _run_in_dir(["git", "checkout", "-b", branch], path)
+
 
 def cpython_branch(path: Path) -> str:
     """Grab the branch of cpython."""

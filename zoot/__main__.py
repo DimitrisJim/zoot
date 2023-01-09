@@ -9,6 +9,7 @@ from zoot.drive import Driver
 CPYTHON = Path.home() / "Devel/cpython"
 RUSTPYTHON = Path.home() / "Devel/RustPython"
 MIN_BRANCH = "3.10"
+MAIN_BRANCH = "3.12"  # TODO: Make this dynamic.
 
 argparser = argparse.ArgumentParser(
     prog="zoot", description="Copy and annotate test from cpython source to rustpython."
@@ -32,7 +33,7 @@ argparser.add_argument(
 argparser.add_argument("--testnames", help="Names of test file", type=str, nargs="+")
 
 
-def validate_args(args: argparse.Namespace) -> None:
+def validate(args: argparse.Namespace) -> None:
     """Check that paths exist, version is correct."""
     fmt = []
     if not os.path.isdir(args.cpython):
@@ -46,31 +47,25 @@ def validate_args(args: argparse.Namespace) -> None:
     if fmt:
         print(f"[ERROR]: {fmt}", file=sys.stderr)
         sys.exit(1)
+    if args.branch == "main":
+        # switch it over to 3.12
+        args.branch = MAIN_BRANCH
 
 
-def run() -> None:
-    """
-    The steps for a conforming commit history are:
-     1. Copy the new file and commit it with message "Update <name> from CPython
-        <branch>"
-     2. Apply the annotations to the file, if the file executes without failures -> Done
-     3. If the file fails, additional by-hand annotations are needed -> Done
 
-    [Done]: Commit the new file with message: "Mark failing tests."
-    """
-    args = argparser.parse_args()
-    validate_args(args)
-    # Get the files to copy over.
-    _ = Driver(args)
-
-
-if __name__ == "__main__":
+def main() -> None:
     # go for a minimum of 3.8
     if sys.version_info < (3, 8):
-        print("ERROR: zoot requires python 3.8 or greater", file=sys.stderr)
+        print("[ERROR]: zoot requires python 3.8 or greater", file=sys.stderr)
         sys.exit(1)
     if not git_exists():
-        print("ERROR: zoot requires git!", file=sys.stderr)
+        print("[ERROR]: zoot requires git!", file=sys.stderr)
         sys.exit(1)
     # ok to assume from here-on out that git is here.
-    run()
+    args = argparser.parse_args()
+    validate(args)
+    # Get the files to copy over.
+    Driver(args).run()
+
+if __name__ == "__main__":
+    main()
