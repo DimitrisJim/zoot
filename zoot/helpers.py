@@ -69,10 +69,10 @@ def git_restore(
     return True
 
 
-def git_diff(cpy_file: Path, rustpy_file: Path) -> str:
+def git_diff(first: Path, second: Path) -> str:
     """Grab the diff."""
     res = subprocess.run(
-        ["git", "diff", "--no-index", cpy_file, rustpy_file], capture_output=True
+        ["git", "diff", "--no-index", first, second], capture_output=True
     )
     return res.stdout.decode("utf-8")
 

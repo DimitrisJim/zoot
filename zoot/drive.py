@@ -10,8 +10,8 @@ from libcst import parse_module
 from zoot.annotate import DecoCollector, DecoAnnotator
 from zoot.helpers import git_add, git_add_commit, git_checkout
 
-CPY_LIB = Path("Lib")
-RUSTPY_LIB = Path("pylib") / "Lib"
+CPYTHON_LIB = Path("Lib")
+RUSTPYTHON_LIB = Path("pylib") / "Lib"
 
 
 class Driver:
@@ -42,7 +42,7 @@ class Driver:
 
             # Got the annotations, write to RustPython file and commit.
             vprint(f"Writing CPython file for '{fname}' to RustPython test lib.")
-            self.testlib.write_to_rustpyfile(fname, cpy)
+            self.testlib.write_to_rustpython(fname, cpy)
             git_add_commit(
                 fname,
                 self.testlib.rustpython_path, 
@@ -53,7 +53,7 @@ class Driver:
             vprint(f"Applying annotations to '{fname}'.")
             annotate = DecoAnnotator.from_collector(collect)
             module = parse_module(cpy).visit(annotate)
-            self.testlib.write_to_rustpyfile(fname, module.code)
+            self.testlib.write_to_rustpython(fname, module.code)
             git_add(fname, self.testlib.rustpython_path)
 
             # TODO: Run against tip of rustpython repo and catch new errors.
@@ -87,11 +87,11 @@ class TestLib:
     # TODO: make paths properties.
     cpython_path: Path
     rustpython_path: Path
-    fnames: str
+    filenames: List[str]
 
-    def __init__(self, cpy_path: str, rustpy_path: str, tests: List[str]) -> None:
-        self.cpython_path = Path(cpy_path) / CPY_LIB / "test/"
-        self.rustpython_path = Path(rustpy_path) / RUSTPY_LIB / "test/"
+    def __init__(self, cpy_path: str, rustpython_path: str, tests: List[str]) -> None:
+        self.cpython_path = Path(cpy_path) / CPYTHON_LIB / "test/"
+        self.rustpython_path = Path(rustpython_path) / RUSTPYTHON_LIB / "test/"
         self.filenames = self._append_py_suffix(tests)
         print(self.filenames)
 
@@ -107,7 +107,7 @@ class TestLib:
                 self._read(self.rustpython_path, fname),
             )
 
-    def write_to_rustpyfile(self, name: Union[Path, str], content: str) -> None:
+    def write_to_rustpython(self, name: Union[Path, str], content: str) -> None:
         """ Write content to rustpython test file."""
         with open(self.rustpython_path / name, "w") as f:
             f.write(content)

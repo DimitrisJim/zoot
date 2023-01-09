@@ -184,7 +184,7 @@ class Test(base_class):
         pass
 """,
     ],
-    # A sandwitched comment belong to the decorator below it, if it
+    # A sandwiched comment belong to the decorator below it, if it
     # mentions rustpython we should grab it and add the expectedFailure:
     [
         """

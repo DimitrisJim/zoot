@@ -1,4 +1,4 @@
-""" Holds annotations for the given file (namely, skips, expectedfailures, etc) 
+""" Holds annotations for the given file (namely, skips, expected failures, etc) 
 These are then re-applied to the copied file.
 """
 import sys
@@ -56,14 +56,14 @@ class DecoCollector(m.MatcherDecoratableVisitor):
     def visit_FunctionDef(self, node: FunctionDef) -> None:
         """Collect decorators for the function. We do not collect all decorated,
         only those that use `unittest.skip` with a message mentioning RustPython and
-        those that have a preceeding comment mentioning RustPython (usually
+        those that have a preceding comment mentioning RustPython (usually
         expectedFailure).
         """
         self.current_func_name = node.name.value
         if len(node.decorators) == 0:
             return
         comments = [*_get_lead_comments(node)]
-        decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
+        decos = [d for d in node.decorators if rustpython_deco(d, len(comments) > 0)]
         if decos:
             self.func_decos[
                 (self.current_class_name, self.current_func_name)
@@ -77,7 +77,7 @@ class DecoCollector(m.MatcherDecoratableVisitor):
             return
         self.current_class_name = node.name.value
         comments = [*_get_lead_comments(node)]
-        decos = [d for d in node.decorators if rustpy_deco(d, len(comments) > 0)]
+        decos = [d for d in node.decorators if rustpython_deco(d, len(comments) > 0)]
         if decos:
             self.cls_decos[node.name.value] = NodeMeta(decos, comments)
 
@@ -173,26 +173,26 @@ class DecoAnnotator(m.MatcherDecoratableTransformer):
 # Helpers
 
 
-def rustpy_deco(deco: Decorator, has_comment: bool = False) -> bool:
+def rustpython_deco(deco: Decorator, has_comment: bool = False) -> bool:
     """Match against the class of deco.decorator. If its
-    of type Call, call _rustpy_deco_call, otherwise, call _rustpy_deco_attr.
+    of type Call, call _rustpython_deco_call, otherwise, call _rustpython_deco_attr.
 
     Unsure how to express this nicely with the `visit_` or match API.
     """
     decorator = deco.decorator
     if isinstance(decorator, libcst.Call):
-        return _rustpy_deco_call(decorator)
+        return _rustpython_deco_call(decorator)
     # re-check the leading comment, it could be the case that we're sandwiched
     # between two decorators:
     has_comment = has_comment or bool(_get_lead_comments(deco))
     if isinstance(decorator, libcst.Attribute) and has_comment:
-        return _rustpy_deco_attr(decorator)
+        return _rustpython_deco_attr(decorator)
 
     # Don't handle bare Name cases for now, I don't think they're used (check?)
     return False
 
 
-def _rustpy_deco_attr(deco_name: libcst.Attribute) -> bool:
+def _rustpython_deco_attr(deco_name: libcst.Attribute) -> bool:
     """Covers the cases where the decorator is of the form:
 
     # TODO: RustPython
@@ -210,7 +210,7 @@ def _rustpy_deco_attr(deco_name: libcst.Attribute) -> bool:
     return False
 
 
-def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
+def _rustpython_deco_call(deco_call: libcst.Call) -> bool:
     """Covers the cases where the decorator is of the form:
 
     @unittest.expectedFailure("todo: RustPython ...")
@@ -231,7 +231,7 @@ def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
         return False
 
     # Have an Attribute, check if it complies:
-    if _rustpy_deco_attr(func):
+    if _rustpython_deco_attr(func):
         for arg in deco_call.args:
             # Similar issue as previous case with `type` comment. Unsure
             # how to rectify so a TODO for now.
@@ -243,12 +243,12 @@ def _rustpy_deco_call(deco_call: libcst.Call) -> bool:
 def _get_lead_comments(
     node: Union[FunctionDef, ClassDef, Decorator]
 ) -> List[EmptyLine]:
-    """Checks if the preceeding comment in a function/class mentions RustPython."""
-    rlines = []
+    """Checks if the preceding comment in a function/class mentions RustPython."""
+    lines = []
     for line in node.leading_lines:
         if _check_comment(line.comment, "rustpython"):
-            rlines.append(line)
-    return rlines
+            lines.append(line)
+    return lines
 
 
 def _check_comment(comment: Optional[libcst.Comment], needle: str) -> bool:

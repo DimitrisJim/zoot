@@ -20,7 +20,7 @@ cases = [
         1,
     ],
     [
-        # sandwitched, we should grab the expectedFailure
+        # sandwiched, we should grab the expectedFailure
         "@unittest.skipUnless('some condition')\n"
         "# TODO: RUSTPYTHON\n"
         "@unittest.expectedFailure\n"
@@ -28,7 +28,7 @@ cases = [
         1,
     ],
     # We currently do not grab these.
-    # attrname not one of skip or expectedFailure
+    # attribute name not one of skip or expectedFailure
     ["""# TODO: RUSTPYTHON\n@unittest.skipIf("TODO: RUSTPYTHON")\n{obj}""", 0],
     # no preceding comment containing "RUSTPYTHON"
     ["""@unittest.expectedFailure\n{obj}""", 0],
