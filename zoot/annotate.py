@@ -43,8 +43,9 @@ class DecoCollector(m.MatcherDecoratableVisitor):
     current_class_name: str
     current_func_name: str
 
-    def __init__(self):
+    def __init__(self, fname: Optional[str] = None):
         self.current_class_name = self.current_func_name = ""
+        self.fname = fname
         self.func_decos = {}
         self.cls_decos = {}
         super().__init__()
@@ -82,16 +83,30 @@ class DecoCollector(m.MatcherDecoratableVisitor):
 
     @m.call_if_inside(m.SimpleStatementLine())
     def visit_Comment(self, node: libcst.Comment) -> None:
-        """Check for any comments that mention RustPython if inside a 
-        simple statement. Warn about them. 
+        """Check for any comments that mention RustPython if inside a
+        simple statement. Warn about them.
+
+        # TODO: Doesn't catch everything, see test_list.py
         """
         needle = "rustpython"
+        fname = f"'{self.fname}'" if self.fname else "the file"
         if _check_comment(node, needle):
-            msg = (
-                f"Found a comment referencing '{needle}' in function "
-                f"'{self.current_func_name}' of class '{self.current_class_name}'."
+            msg = f"Found a comment referencing '{needle}' in {fname}."
+            if self.current_class_name:
+                msg += f" In class '{self.current_class_name}'."
+            if self.current_func_name:
+                msg += f" In function '{self.current_func_name}'."
+            msg += (
+                "\nThis comment could be in a top level block or inside a function"
+                " and probably requires manual intervention."
             )
             print(msg, file=sys.stderr)
+
+    def clear(self):
+        """Clear all instance data."""
+        self.current_class_name = self.current_func_name = ""
+        self.func_decos = {}
+        self.cls_decos = {}
 
 
 class DecoAnnotator(m.MatcherDecoratableTransformer):
@@ -234,6 +249,7 @@ def _get_lead_comments(
         if _check_comment(line.comment, "rustpython"):
             rlines.append(line)
     return rlines
+
 
 def _check_comment(comment: Optional[libcst.Comment], needle: str) -> bool:
     """Checks if the comment mentions 'needle'."""

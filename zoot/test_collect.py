@@ -96,7 +96,11 @@ class C(T):
         # A GIANT HACK
         SOME_HACK_WOW()
 """,
-"Found a comment referencing 'rustpython' in function 'f' of class 'C'."
+(
+    "Found a comment referencing 'rustpython' in 'test'. In class 'C'. In function 'f'."
+    "\nThis comment could be in a top level block or inside a function"
+    " and probably requires manual intervention."
+)
 ],
 [
 """
@@ -116,7 +120,7 @@ class C(T):
 def test_func_comments():
     for stmt, expected in comment_cases:
         node = libcst.parse_statement(stmt)
-        c = DecoCollector()
+        c = DecoCollector("test")
         s = StringIO()
         with redirect_stderr(s):
             _ = node.visit(c)
