@@ -42,6 +42,5 @@ Requires `libCST` and Python 3.8+, `pytest` for testing.
  1. Execute test files with tip of rustpython binary and add skips when necessary? -- This requires
     disambiguation of different error codes returned and a way to grab test-names. Can do this with
     the test lib.  
- 2. Allow running things for more than one file at a time.
- 3. Have it watch for file changes in the CPython repo and automatically automatically open a PR for the changes on
+ 2. Have it watch for file changes in the CPython repo and automatically automatically open a PR for the changes on
     my local fork of RustPython. After reviewing the changes I can push it back upstream. Use submodules for this?
