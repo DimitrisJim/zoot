@@ -50,6 +50,11 @@ class DecoCollector(m.MatcherDecoratableVisitor):
         self.cls_decos = {}
         super().__init__()
 
+    def info(self) -> str:
+        f = f"function decorators = {len(self.func_decos)}"
+        c = f"class decorators = {len(self.cls_decos)}" 
+        return f"Caught decorators for '{self.fname}': {f}, {c}"
+
     # visit if in a class which has at least one base class
     # and at least one decorator.
     @m.call_if_inside(m.ClassDef(bases=[m.AtLeastN(n=1)]))
