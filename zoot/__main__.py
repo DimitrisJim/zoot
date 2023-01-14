@@ -10,27 +10,70 @@ CPYTHON = Path.home() / "Devel/cpython"
 RUSTPYTHON = Path.home() / "Devel/RustPython"
 MIN_BRANCH = "3.10"
 MAIN_BRANCH = "3.12"  # TODO: Make this dynamic.
+ZOOT_DESC = """
+zoot helps with syncing the stdlib between CPython and RustPython, it does this by
+copying files from a specific branch of CPython to RustPython.
+
+For test files, `unittest.skip` and `unittest.expectedFailure`, decorators that
+annotate test methods that fail, are grabbed from the files in RustPython and
+copied over to the CPython files from the target branch. This is done to ensure 
+that the tests are still marked as failing in the target branch. Directory structured
+tests, like `test_json` or `test_importlib` are not handled. If any unexpected
+mentions of `RUSTPYTHON` are found in a comment not preceding a decorator, a warning
+is printed.
+
+If the `--copy-libs` files is passed, simple library files are copied 
+over from CPython to RustPython, no changes are made to the library files themselves.
+Libraries are located by stripping the `test_` prefix from the supplied names and
+looking for the files in the `Lib` directory of CPython. If one is found, the library
+gets copied, otherwise a warning is printed. A library file is considered simple if
+it is a single Python file, i.e not a directory.
+"""
 
 argparser = argparse.ArgumentParser(
-    prog="zoot", description="Copy and annotate test from cpython source to rustpython."
+    prog="zoot", description=ZOOT_DESC, formatter_class=argparse.RawTextHelpFormatter
 )
 argparser.add_argument(
-    "--cpython", help="Absolute path to cpython source", default=CPYTHON, type=str
+    "--cpython", help="Absolute path to CPython source", default=CPYTHON, type=str
 )
 argparser.add_argument(
     "--rustpython",
-    help="Absolute path to rustpython source",
+    help="Absolute path to RustPython source",
     default=RUSTPYTHON,
     type=str,
 )
 argparser.add_argument(
-    "-v", "--verbose", action="count", default=0, help="Increase verbosity"
+    "-v",
+    "--verbose",
+    action="count",
+    default=0,
+    help="Increase verbosity. Default '%(default)s'.",
 )
 argparser.add_argument(
-    "--branch", help="Branch of CPython to target", default="3.11", type=str
+    "--branch",
+    help="Branch of CPython to target. Default '%(default)s'.",
+    default="3.11",
+    type=str,
 )
-# TODO: Add a special handling for an 'all' argument?
-argparser.add_argument("--testnames", help="Names of test file", type=str, nargs="+")
+argparser.add_argument(
+    "filenames",
+    help="Names of the test files (test_string, test_binop)",
+    type=str,
+    nargs="+",
+)
+argparser.add_argument(
+    "--copy-libs",
+    help="Allow copying of library files. Default '%(default)s'",
+    action="store_true",
+    default=True,
+)
+# TODO: Support dry run?
+argparser.add_argument(
+    "--dry",
+    help="Don't actually copy files. Default '%(default)s'.",
+    action="store_true",
+    default=False,
+)
 
 
 def validate(args: argparse.Namespace) -> None:
@@ -52,7 +95,6 @@ def validate(args: argparse.Namespace) -> None:
         args.branch = MAIN_BRANCH
 
 
-
 def main() -> None:
     # go for a minimum of 3.8
     if sys.version_info < (3, 8):
@@ -64,7 +106,6 @@ def main() -> None:
     # ok to assume from here-on out that git is here.
     args = argparser.parse_args()
     validate(args)
-    # Get the files to copy over.
     Driver(args).run()
 
 if __name__ == "__main__":
